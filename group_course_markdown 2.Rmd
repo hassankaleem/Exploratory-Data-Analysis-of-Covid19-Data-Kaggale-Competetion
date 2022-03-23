@@ -1,0 +1,195 @@
+---
+title: "Spread of Covid-19 Report"
+Name: "Hassan Kaleem"
+output: html_document
+---
+
+Part 2 of covid19 rmarkdown file. Due to lack of resources it was not possible to compile all the code in one rmarkdown file. I order to make code work
+we had to split our code in two rmarkdown files.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE,message = FALSE,comment = NA,fig.width = 10)
+```
+
+```{r echo=FALSE, warning=FALSE , message=FALSE}
+
+# Loading packages
+suppressPackageStartupMessages(
+  {
+
+#Hassan part        
+    
+  library(readr)
+  library(tidyverse)
+  library(plotly)
+  library(mapview)
+  library(DT)
+  library(leaflet)
+  library(ggthemes)
+  library(hrbrthemes)
+  library(gganimate)
+  library(lubridate)
+  library(magick)
+    }
+)
+```
+
+```{r echo=FALSE, warning=FALSE , message=FALSE}
+complete <- read_csv("complete.csv")
+```
+
+## Introduction:
+In the history year 2020 will be written as one worst time in human era. According to Johns Hopkins University (JHU) more than 2,686,366 deaths were reported globally due to spread of virus out of which 159,216 deaths were reported in India. In order to understand how things went we will be exploring covid19 dataset which have records of india cases from date 1/30/2020 to 8/6/2020. 
+
+## Geomapping of Data Point
+Below is the geographical mapping of data points for the covid19 cases. With help of this one explore exact locations of reported covid19 cases.
+
+```{r echo=FALSE, warning=FALSE , message=FALSE}
+LOCATION_LATITUDE<-as.numeric(unlist(complete[3]))
+LOCATION_LONGITUDE<-as.numeric(unlist(complete[4]))
+m <- leaflet() %>%
+  addTiles() %>%
+  addMarkers(lng=LOCATION_LONGITUDE,lat=LOCATION_LATITUDE,clusterOptions = markerClusterOptions()) 
+m
+```
+
+## Time series plot of covid cases
+
+Below is time series plot of covid19 cases using geolocation data points.
+
+```{r echo=FALSE, warning=FALSE , message=FALSE}
+world <- ggplot() +
+  borders("world", colour = "gray85", fill = "gray80",regions = 'IND') +
+  theme_map()
+
+map <- world +
+  geom_point(aes(x = Longitude, y = Latitude, size = `Total Confirmed cases`,
+                 frame = Date, cumulative = TRUE,color = `Total Confirmed cases`),
+             data = complete, alpha = .5) +
+  theme(text = element_text(size=25, face = 'bold'))+
+  guides(size = FALSE, color = FALSE)
+
+anim = map + transition_states(Date, wrap=TRUE, transition_length = 0) +
+  labs(title = '{closest_state}', caption  = "COVID-19",
+       subtitle  =  "Corona Virus Total Confirmed cases")+
+  theme(plot.title = element_text(hjust = 0.5,vjust = 1))
+# Output
+animate(plot = anim,height = 500, width = 1000,renderer=magick_renderer())
+```
+
+```{r}
+
+```
+
+One of key finding of below visualization was that during the weekdays total number of confirmed covid19 cases was pretty high as people use to work and run their business whereas during weekends confirmed covid19 cases were not that high as people use to stay at home and spend time with their friends and family.
+
+```{r echo=FALSE, warning=FALSE , message=FALSE}
+Daily_plot = complete %>% 
+  mutate(Day = weekdays(x = Date,abbreviate = FALSE)) %>% 
+  group_by(Day) %>% 
+  summarise(Frequency = sum(`Total Confirmed cases`)) %>% 
+  mutate(Day = factor(x = Day,levels = c('Sunday','Monday','Tuesday',
+                                         'Wednesday','Thursday','Friday',
+                                         'Saturday'))) %>% 
+  na.omit() %>% 
+  ggplot(data = .,aes(x = Day,y = Frequency,fill = Day))+
+  geom_col(show.legend = FALSE)+
+  labs(x = '',
+       title = 'Daily Distribution of Total Confirmed cases Reported')+
+  scale_fill_manual(values = rep('blue',7))+
+  geom_text(aes(label = Frequency),vjust = -0.5)+
+  theme_light()+
+  theme(axis.text.x = element_text(angle = 15),
+        panel.grid.minor.x = element_line(linetype = 'blank'),
+        panel.grid.minor.y = element_line(linetype = 'blank'))
+ggplotly(p = Daily_plot)
+```
+
+## Trend of total confirmed 
+
+Below is time series plot for total confirmed cases in India from date 1/30/2020 to 8/6/2020.
+
+```{r echo=FALSE, warning=FALSE , message=FALSE}
+ft = complete %>%
+ggplot( aes(x=Date, y= `Total Confirmed cases`/1000)) +
+geom_line() +
+geom_point() +
+ggtitle("Trend of Total Confirmed cases") +
+scale_y_continuous(breaks = seq(0,400,50),labels = paste0(seq(0,400,50),'K'))+
+scale_x_date(date_breaks = "1 month", date_labels = "%Y %b %d")+
+theme_economist() +
+#theme(axis.text.x = element_text(angle = 45))+
+ylab("Total Confirmed cases") +
+transition_reveal(Date)
+animate(plot = ft,height = 500, width = 1000, renderer=magick_renderer())
+```
+
+## Top 10 states of India with the highest confirmed cases.
+
+In the below graph we can visualize the time series bar plot for the top 10 states of India with the highest confirmed covid19 cases form date 1/30/2020 to 8/6/2020. It was found the Maharashtra had reported highest number of confirmed covid19 cases .
+
+```{r echo=FALSE, warning=FALSE , message=FALSE}
+states = c('Andhra Pradesh','Delhi','Gujarat','Karnataka','Maharashtra','Rajasthan','Tamil Nadu',
+           'Telangana','Uttar Pradesh','West Bengal')
+
+X <- complete %>% 
+  select(Date,`Name of State / UT`,`Total Confirmed cases`) %>% 
+  rename(Country = `Name of State / UT`) %>% 
+  #filter(Country %in% states) %>% 
+  group_by(Date,Country) %>%
+  summarise(Confirmed =  sum(`Total Confirmed cases`)) %>%  as.data.frame()
+
+
+x<- X %>% group_by(Date) %>%
+  mutate(rank = rank(x = -Confirmed),
+         Value_rel = Confirmed/Confirmed[rank==1],
+         Value_lbl = paste0(" ",Confirmed)) %>%
+  group_by(Country)%>%
+  filter(rank <=10) %>%
+  filter(Country %in% states) %>% 
+  ungroup()
+
+staticplot = ggplot(x, aes(rank, group = Country, 
+                           fill = as.factor(Country), color = as.factor(Country))) +
+  geom_tile(aes(y = Confirmed/2,
+                height = Confirmed,
+                width = 0.9), alpha = 0.8, color = NA) +
+  geom_text(aes(y = 0, label = paste(Country, " ")),size=6, vjust = 0, hjust = 1) +
+  geom_text(aes(y=Confirmed,label = Value_lbl, hjust=0),size=6) +
+  coord_flip(clip = "off", expand = FALSE) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_reverse() +
+  guides(color = FALSE, fill = FALSE) +
+  theme(axis.line=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        legend.position="none",
+        panel.background=element_blank(),
+        panel.border=element_blank(),
+        panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.x = element_line( size=.1, color="grey" ),
+        panel.grid.minor.x = element_line( size=.1, color="grey" ),
+        plot.title=element_text(size=25, hjust=0.5, face="bold", colour="grey", vjust=-1),
+        plot.subtitle=element_text(size=18, hjust=0.5, face="italic", color="grey"),
+        plot.caption =element_text(size=8, hjust=0.5, face="italic", color="grey"),
+        plot.background=element_blank(),
+        plot.margin = margin(1,3, 1, 7.5, "cm")
+        )
+
+anim = staticplot + 
+  transition_states(Date,transition_length = 4, state_length = 1) +
+  view_follow(fixed_x = TRUE)  +
+  labs(title = '{closest_state}',  
+       subtitle  =  "Corona Virus Cases",
+       caption  = "COVID-19")
+
+animate(plot = anim ,height = 500, width = 1000,renderer=magick_renderer())
+```
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

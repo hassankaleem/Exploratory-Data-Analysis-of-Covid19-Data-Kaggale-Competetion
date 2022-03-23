@@ -1,0 +1,419 @@
+---
+title: "Coursework-2"
+author: ' Names :Hamid kabir, Kishan Patel, Ola Lanlehin, Haasan kaleem'
+date: "12/03/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE,message = FALSE,comment = NA,fig.width = 10)
+```
+
+## Hamid Kabir Findings
+
+## Loading the necessary libraries
+First we need to load some libraries.
+```{r message = FALSE , warning = FALSE}
+
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(CGPfunctions)
+library(tidyverse)
+library(reshape2)
+library(tidyr)
+library(scales) 
+library(knitr)
+```
+
+## Loading the Data
+
+First we will load the data from our csv file.As we are search the average number of new cases and deaths over the each month, so the Date column must be converted into three sub columns(Day/Month/Year) as needed for our analysis.
+
+```{r }
+df1 <- read.csv("complete.csv", header = TRUE, sep = ",")
+```
+
+Have looked for the few rows of our data
+
+```{r }
+head(df1)
+```
+
+The summary of the data
+
+```{r }
+summary(df1)
+```
+
+The Structure of the data. 
+
+```{r }
+str(df1)
+```
+
+As we can see the Death column type is character, so we need to change it to numeric in order to perform data visualization.
+
+```{r }
+df1$Death <- as.numeric(df1$Death)
+str(df1)
+```
+## Data Cleaning
+we will look for the missing values in the whole dataset. We will perform data cleaning step for every subset of the dataset we take to answer a question.
+
+
+```{r }
+missing_val <- sapply(df1, function(x) sum(is.na(x)))
+print(missing_val)
+```
+
+The Death column has null value of one row. And we fill that with 0.
+
+```{r }
+df1[is.na(df1)] <- 0
+```
+
+Here we are creating new variable df2 by using the mutate function to Converting the Date column into three separate columns(Day/Month/Year).We are doing this to check the average of Death and New cases column by month.
+
+```{r }
+# Here we adds new variable df2 data frame  
+df2 = df1 %>%
+  dplyr::mutate(day = lubridate::year(Date), 
+                month = lubridate::month(Date), 
+                year = lubridate::day(Date))
+head(df2)
+```
+
+Drop the Date column from df2
+
+```{r }
+df2$Date <- NULL
+head(df2)
+```
+
+## Questions
+
+Q1: The average number of new cases and deaths over each month.
+
+Q2: which top 10 states has the average number of new cases and deaths.
+
+
+## Q1: The average number of new cases and deaths in each month.
+In order to see the number New Cases and deaths per month we have split the DATE column into year, month and day. To group by month and take the mean of the observations.
+
+```{r }
+
+# group by month and take the mean of the New Cases and Deaths observations
+# graph by month:
+
+
+#Checking the number new cases by month and state over the  8 months
+mean_case_death <- df2 %>%
+  group_by(month) %>% 
+  summarise_at(vars("New.cases", "Death"), mean)
+mean_case_death 
+
+  
+ggplot(mean_case_death, aes(x = month)) + 
+    geom_line(aes(y = New.cases,  color="New.cases")) +
+    geom_line(aes(y = Death, color="Death")) +
+    labs(
+    x = "Months",
+    y = "Average New Cases and Deaths",
+    title = paste(
+      "The average number of New Cases and Deaths over the month"
+    )
+  )
+  
+# first lets have look into average number of new cases and deaths
+off_race_table <- summary(mean_case_death)
+kable(mean_case_death,caption = "Descriptive statistics for the New cases and deaths for Q1")
+  
+```
+
+## Q2: which top 10 states has the average number of new cases and deaths.
+
+To see the mean New Cases and deaths of top 10 state. We group by state and take the mean the observations.
+
+```{r }
+
+# group by State and take the mean of the New Cases and Deaths observations of top states 10 
+# graph by state:
+
+mean_cases_deaths <- df2 %>%
+  group_by(Name.of.State...UT) %>% 
+  summarise_at(vars("New.cases", "Death"), mean) %>%
+top_n( 10)
+mean_cases_deaths
+
+
+dfm <- melt(mean_cases_deaths, id.vars = 1)
+
+ggplot(dfm,aes(x = Name.of.State...UT,y = value)) + 
+  geom_bar(aes(fill = variable),stat = "identity",position = "dodge") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(
+    x = "Name of States",
+    y = "Average Number of New Cases and Deaths",
+    title = paste(
+      "The top 10 states' average number of  New Cases and Deaths"
+    )
+  )
+
+# first lets have look into average number of new cases and deaths
+mean_cases_deaths_table <- summary(mean_cases_deaths)
+kable(mean_cases_deaths,caption = "Descriptive statistics for the top 10 state of New cases and deaths for Q2")
+  
+  
+```
+## Ola Lanlehin Findings
+
+The Death column has null value of one row. And we fill that with 0.
+
+```{r message = FALSE , warning = FALSE}
+library(dplyr)
+library(skimr)
+library(ggplot2)
+library(gt)
+library(reactable)
+library(expss)
+library(tinytex)
+library(ggpubr)
+```
+The dataset is the downloaded from Kaggle. It is the Covid dataset the states in India with variables that cover those tested positive to the virus, denoted as confirmed cases, deaths, Dates virus detected, the number recoveries, geographic locations denoted longitude and latitude and more. It gives a rich historical record the document to analyse and draw insight from. 
+```{r}
+cdata <- read.csv("complete.csv",header=T, stringsAsFactors = F)
+```
+
+The graph below summarises the figure of covid cases per state. The insight from the graph below is that the spread of Covid-19, across India,is widespread and the number case are not far between except for two or three states. 
+
+```{r}
+ggplot(data = cdata) +
+  geom_bar(mapping = aes(x =Name.of.State...UT ))+
+  labs(title = "Covid-19 cases in India ",
+       subtitle = "Count of Covid in states in India",
+       x = "States in India ", y = "Counts of cases per state")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+The graph below attempts to investigate the pattern in the implied distribution  of Total Corfirmed Cases as it relates to those that have survived and recovered from the virus. The implication of the relationship is that the recoveries seems to be suggests that as covi cases rise, recoveries drop. The likely explanation is that new variants slow recoveries. 
+
+```{r}
+ggplot(data = cdata) + 
+  geom_point(mapping = aes(x = Cured.Discharged.Migrated, y =Total.Confirmed.cases ))+
+  labs(title = "Covid-19 cases in India",
+       subtitle = "Total confirmed cases as it relates to recoveries",
+       x = "Recovered and Migrated", y = "Total COnfirmed Cases")+
+  xlim(5,100)+
+  ylim(10,150)
+```
+
+The graphy below shows covid cases and the outliers. Some states regular or arithmetic increases while other showing geometric in denoted by the number of outliers they posted above the box plots. The sudden jump in number maybe explained by population density, 
+```{r}
+ggplot(data = cdata, mapping = aes(x = Name.of.State...UT, y = Total.Confirmed.cases)) +
+  geom_boxplot()+
+  labs(title = "Covid-19 cases in India",
+       subtitle = "States and confirmed cases",
+       x = "States by name", y = "Total COnfirmed Cases")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  ylim(10,1000)
+
+cdata$Date <- as.Date(cdata$Date,
+                      format = "%m/%d/%y")
+```
+
+
+## Kishan Findings
+
+```{r message = FALSE , warning = FALSE}
+
+#load libraries 
+library(tidyverse)
+library(dplyr)
+library(plotly)
+library(ggplot2)
+library(IRdisplay)
+library(leaflet)
+library(leafpop)
+library(dplyr)
+library(plyr)
+library(purrr)
+library(magrittr)
+library(rlang)
+library(knitr)
+library(anytime)
+```
+
+
+
+```{r }
+corona_india <- read.csv("complete.csv", header = TRUE, sep = ",")
+confirmed_color <- "purple"
+active_color <- "#1f77b4"
+cured_color <- "forestgreen"
+death_color <- "red"
+
+#convert date character to numeric type
+corona_india$Death <- as.numeric(as.character(corona_india$Death))
+```
+
+```{r }
+# define dataset for states wise cases 
+df_ind <- corona_india %>% 
+  dplyr::group_by(Name.of.State...UT) %>% 
+  dplyr::summarise(total_confirmed=sum(Total.Confirmed.cases),total_cured=sum(Cured.Discharged.Migrated),total_deaths=sum(Death)) %>% 
+  dplyr::mutate(total_unrecovered = total_confirmed - ifelse(is.na(total_cured), 0, total_cured) - ifelse(is.na(total_deaths), 0, total_deaths)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(States = factor(Name.of.State...UT, levels = Name.of.State...UT))
+
+df_ind_daily <- corona_india %>% 
+  dplyr::group_by(Date) %>% 
+  dplyr::summarise(total_confirmed=sum(Total.Confirmed.cases),total_cured=sum(Cured.Discharged.Migrated),total_deaths=sum(Death)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(total_active=total_confirmed-total_deaths-total_cured) %>%
+  dplyr::mutate(confirmed_cum=cumsum(total_confirmed),
+                cured_cum=cumsum(total_cured),
+                death_cum=cumsum(total_deaths),
+                active_cum=cumsum(total_active))
+
+df_ind_1 <- corona_india %>% dplyr::filter(as.Date(Date) == max(as.Date(Date)))
+```
+
+## State wise Total Cases
+
+The bar graph of total cases in indian states and according number of cases how many death and cured number of cases shown below graph. As shown in graph Maharashtra had over 10million number of cases between 30-01-2020 to 06-08-2020 which is highest number of cases overall to compare to other states and also active case, cured cases and death cases is around 6.458M, 8.146M and 587.648k number of cases which is more than to compare different stats.A second highest is Tamilnadu for cases of active,death and cured. Union Territory of chandigarh has only 2 active cases and 0 deaths and cured cases. As following data also find 0 death and 0 cured cases in Union Territory of ladakh and Union territory of jammu and kashmir.
+```{r }
+
+p_ind <- plot_ly(data=df_ind[1:40,],
+                 x= ~States,
+                 y= ~total_unrecovered,
+                 type= "bar",
+                 name= "Active",
+                 marker=list(color=active_color)) %>%
+  add_trace(y = ~ total_cured, 
+            name = "Cured",
+            marker = list(color = cured_color)) %>%
+  add_trace(y = ~ total_deaths, 
+            name = "Death",
+            marker = list(color = death_color)) %>%
+  layout(barmode = 'stack',
+         yaxis = list(title = "Total Cases", type = "log"),
+         xaxis = list(title = ""),
+         hovermode = "compare",
+         margin =  list(
+           #l = 60,
+           #r = 40,
+           b = 10,
+           t = 10,
+           pad = 2
+         )
+  )
+
+ggplotly(p_ind)
+```
+
+## A rate of total cases in India base on different type of cases (Death and Cured cases)
+
+As below graph is showing death rate and recovery rate by states wise and comparison of each other for confirmed cases, cured rate and death rate. In this scenario Gujarat is most death rate compare to other states which is 5% death rate. Telangana** has highest cured rate of cases which is 76.9%. Mizoram and Puducherry has 0% death rate total out of 13335 and 82967 confirmed cases. Meghalaya is one of the states which has minimum cured rate it is 28.1%. As to comparison clearly show which states has how much rate of death, cured and active cases.
+```{r }
+
+df_ind2 <- corona_india %>% 
+  dplyr::group_by(Name.of.State...UT) %>% 
+  dplyr::summarise(total_newcases=sum(New.cases),total_recovered=sum(New.recovered),total_newdeaths=sum(New.deaths)) %>% 
+  dplyr::mutate(total_unrecovered = total_newcases - ifelse(is.na(total_recovered), 0, total_recovered) - ifelse(is.na(total_newdeaths), 0, total_newdeaths)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(States = factor(Name.of.State...UT, levels = Name.of.State...UT))
+
+
+coronavirus_rate1 <- corona_india %>% 
+  dplyr::group_by(Name.of.State...UT) %>% 
+  dplyr::summarise(total_confirmed=sum(Total.Confirmed.cases),total_cured=sum(Cured.Discharged.Migrated),total_deaths=sum(Death)) %>% 
+  dplyr::arrange(-total_confirmed ,-total_cured,-total_deaths) %>%
+  dplyr::filter(total_confirmed >= 100) %>%
+  dplyr::mutate(recover_rate = total_cured / total_confirmed,
+                death_rate = total_deaths / total_confirmed) %>% 
+  dplyr::mutate(recover_rate = dplyr::if_else(is.na(recover_rate), 0, recover_rate),
+                death_rate = dplyr::if_else(is.na(death_rate), 0, death_rate)) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(confirmed_normal = as.numeric(total_confirmed) / max(as.numeric(total_confirmed)))
+```
+
+
+```{r }
+
+plotly::plot_ly(y = ~ round(100 * coronavirus_rate1$recover_rate, 1),
+                x = ~ round(100 * coronavirus_rate1$death_rate, 1),
+                size = ~  log(coronavirus_rate1$total_confirmed),
+                sizes = c(5, 70),
+                type = 'scatter', mode = 'markers',
+                color = ~ coronavirus_rate1$Name.of.State...UT,
+                marker = list(sizemode = 'diameter' , opacity = 0.5),
+                hoverinfo = 'text',
+                text = ~paste("</br>", coronavirus_rate1$Name.of.State...UT, 
+                              "</br>  Confirmed Cases: ", coronavirus_rate1$total_confirmed,
+                              "</br>  Cured Rate: ", paste(round(100 * coronavirus_rate1$recover_rate, 1), "%", sep = ""),
+                              "</br>  Death Rate: ",  paste(round(100 * coronavirus_rate1$death_rate, 1), "%", sep = ""))) %>%
+  plotly::layout(yaxis = list(title = "Recovery Rate", ticksuffix = "%"),
+                 xaxis = list(title = "Death Rate", ticksuffix = "%", 
+                              dtick = 1, 
+                              tick0 = 0),
+                 hovermode = "compare")
+  
+```
+
+## Date wise cases differ and changes in numbers of cases
+
+A scatter plot describe date wise how many number of cases active, cured and death. As per dataset 23-05-2020 date has 1.378M total number of cases and after that cured cases is surpass of active cases. Total number of death at 23-05-2020 is 67.317k. At the end of 06-08-2020 total cured cases are around 32.413M out of all confirmed cases. As clear plot describe the simply way date wise growing cured cases of corona virus in India.
+
+
+```{r }
+
+# visualize data by dates for numbers of cured cases
+p2_ind<-plot_ly(data = df_ind_daily) %>%
+  add_trace(x = ~ Date,
+            y = ~ active_cum,
+            type = "scatter",
+            mode = "lines+markers",
+            name = "Active",
+            line = list(color = active_color),
+            marker = list(color = active_color)) %>%
+  add_trace(x = ~ Date,
+            y = ~ cured_cum,
+            type = "scatter",
+            mode = "lines+markers",
+            name = "Cured",
+            line = list(color = cured_color),
+            marker = list(color = cured_color)) %>%
+  add_trace(x = ~ Date,
+            y = ~ death_cum,
+            type = "scatter",
+            mode = 'lines+markers',
+            name = "Death",
+            line = list(color = death_color),
+            marker = list(color = death_color)) %>%
+  add_annotations(x = as.Date("2020-03-01"),
+                  y = 42716,
+                  text = paste("no. of active cases surpass", "<br>", "the no. of cured cases"),
+                  xref = "x",
+                  yref = "y",
+                  arrowhead = 5,
+                  arrowhead = 3,
+                  arrowsize = 1,
+                  showarrow = TRUE,
+                  ax = -10,
+                  ay = 90) %>%
+  layout(title = "",
+         yaxis = list(title = "Cumulative Number of Cases"),
+         xaxis = list(title = "Date"),
+         legend = list(x = 0.1, y = 0.9),
+         hovermode = "compare")
+
+ggplotly(p2_ind)
+
+  
+```
+ 
